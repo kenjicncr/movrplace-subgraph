@@ -1,0 +1,23 @@
+type Bucket @entity {
+  id: ID!
+
+  position: BigInt!
+
+  pixels: [BigInt!]
+
+  lastBlockUpdated: BigInt!
+}
+
+type Account @entity {
+  id: ID!
+
+  totalPixelsPlaced: BigInt!
+
+  address: Bytes!
+}
+
+type Charity @entity {
+  id: ID!
+
+  totalPixels: BigInt!
+}
