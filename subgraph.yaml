@@ -1,6 +1,6 @@
 specVersion: 0.0.4
 description: Subgraph for MOVRPlace the first charity based /r/place on the Blockchain.
-repository: https://github.com/kenjicncr/vday-card-subgraph
+repository: https://github.com/kenjicncr/movrplace-subgraph
 schema:
   file: ./schema.graphql
 dataSources:
