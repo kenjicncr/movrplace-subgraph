@@ -3,7 +3,7 @@ type Bucket @entity {
 
   position: BigInt!
 
-  pixels: [BigInt!]
+  pixels: [BigInt!]!
 
   lastBlockUpdated: BigInt!
 }

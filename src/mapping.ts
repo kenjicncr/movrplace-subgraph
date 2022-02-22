@@ -1,84 +1,92 @@
-import { Bytes, BigInt, log } from '@graphprotocol/graph-ts'
+import { Bytes, BigInt, log, store } from '@graphprotocol/graph-ts'
 import { StorePixelsCall } from './types/MOVRPlace/MOVRPlaceABI'
 import { Bucket, Account, Charity } from './types/schema'
 
+// globals 
+let pixelArr: Array<BigInt>
+// let bucket: Bucket | null
+let bucketMapping = new Map<string, Array<BigInt>>()
 
-export type BucketArray = {
-  [bucketIndex: number]: number[];
-}
+let oldPixelArr: Array<BigInt>
+let newPixelArr: Array<BigInt>
+let combinedPixelArr: Array<BigInt>
+let blockNumber: BigInt
 
 export function handleStorePixels(call: StorePixelsCall): void {
 
   let id = call.transaction.hash.toHex()
+  blockNumber = call.block.number
 
-  let pixelInputs: Array<any>
+  let pixelInputs = new Array<Map<string,BigInt>>()
 
   for (let step = 0; step < call.inputs.pixelInputs.length; step++) {
     // Runs 5 times, with values of step 0 through 4.
 
-    const _pixelInput = call.inputs.pixelInputs[step]
-    pixelInputs.push({
-      bucket: _pixelInput.bucket,
-      posInBucket: _pixelInput.posInBucket,
-      color: _pixelInput.color,
-    })
+    const _pixelInput = call.inputs.pixelInputs[0]
+
+    let pixelInputObject = new Map<string,BigInt>()
+
+    pixelInputObject.set("bucket", _pixelInput.bucket)
+    pixelInputObject.set("posInBucket", _pixelInput.posInBucket)
+    pixelInputObject.set("color", new BigInt(_pixelInput.color))
+
+    pixelInputs.push(pixelInputObject)
   }
 
-  let bucketArr: BucketArray = {}
   let bucketLength = 16
 
   for(let i = 0; i < pixelInputs.length; i++) {
-    const bucketId = pixelInputs[i].bucket.toString()
-    const posInBucket = pixelInputs[i].posInBucket
-    const color = pixelInputs[i].color
+    let _pixelInput = pixelInputs[i]
+    let bucketId = _pixelInput.get("bucket").toString()
+    let posInBucket = parseInt(pixelInputs[i].get("posInBucket").toString()) as i32
+    const color = pixelInputs[i].get("color")
 
-    if (bucketArr[bucketId] == null || bucketArr[bucketId].length <= 0)
-    bucketArr[bucketId] = Array<number>(bucketLength).fill(0);
+    if (bucketMapping.get(bucketId) == null || bucketMapping.get(bucketId).length <= 0) {
+      let arr = new Array<BigInt>(bucketLength).fill(new BigInt(0))
 
-    bucketArr[bucketId][posInBucket] = color;
+      bucketMapping.set(bucketId, arr)
+      bucketMapping.get(bucketId)[posInBucket] = color
+    }
   }
 
-  for(let i = 0; i < pixelInputs.length; i++) {
-    const pixelInput = pixelInputs[i]
-    const bucketId: string = pixelInput.bucket.toString()
 
-    const bucket = Bucket.load(bucketId)
+  pixelInputs.forEach((pixelInput) => {
+    const bucketId = pixelInput.get("bucket").toString()
+
+    let bucket = Bucket.load(bucketId)
 
     if(!bucket) {
       let bucket = new Bucket(bucketId)
-
-      bucket.position = pixelInput.bucket
-      bucket.pixels = bucketArr[bucketId]
-      bucket.lastBlockUpdated = call.block.number
-
-      bucket.save()
-    } else {
-      // bucket exists
-
-      let oldPixels = bucket.pixels
-      let newPixels = bucketArr[bucketId]
-
-      let combinedPixels = []
-
-      for(let i = 0; i < bucket.pixels.length; i++) {
-        const newPixel = newPixels[i]
-
-        // if position is 0, it means no need to override
-        // and save the old one
-        if(newPixel === 0) {
-          combinedPixels[i] = oldPixels[i]
-        } else {
-          combinedPixels[i] = newPixels[i]
-        }
-      }
-
-      bucket.pixels = combinedPixels
-      // update block #
-      bucket.lastBlockUpdated = call.block.number
-
-      log.info(`UPDATED BUCKET #{}: New Array: {}`, [bucketId, combinedPixels.toString()])
+      bucket.position = pixelInput.get("bucket")
+      pixelArr = bucketMapping.get(bucketId)
+      bucket.pixels = pixelArr
+      bucket.lastBlockUpdated = blockNumber
 
       bucket.save()
     }
-  }
+
+    if(bucket) {
+
+      oldPixelArr = bucket.pixels
+      newPixelArr = bucketMapping.get(bucketId)
+
+      for(let i = 0; i < 16; i++) {
+        const newPixel = newPixelArr[i]
+
+        // if position is 0, it means no need to override
+        // and save the old one
+        if(newPixel === new BigInt(0)) {
+          combinedPixelArr[i] = oldPixelArr[i]
+        } else {
+          combinedPixelArr[i] = newPixelArr[i]
+        }
+      }
+
+      bucket.pixels = combinedPixelArr
+      bucket.lastBlockUpdated = blockNumber
+
+      log.info("UPDATED BUCKET #{}", [bucketId])
+      bucket.save()
+    }
+  })
 }
