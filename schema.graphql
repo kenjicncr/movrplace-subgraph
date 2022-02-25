@@ -1,17 +1,17 @@
 type Bucket @entity {
   id: ID!
 
-  position: BigInt!
+  position: Int!
 
-  pixels: [BigInt!]!
+  pixels: [Int!]!
 
-  lastBlockUpdated: BigInt!
+  lastBlockUpdated: Int!
 }
 
 type Account @entity {
   id: ID!
 
-  totalPixelsPlaced: BigInt!
+  totalPixelsPlaced: Int!
 
   address: Bytes!
 }
@@ -19,5 +19,7 @@ type Account @entity {
 type Charity @entity {
   id: ID!
 
-  totalPixels: BigInt!
+  name: String!
+
+  totalPixels: Int!
 }

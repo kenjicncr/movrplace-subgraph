@@ -18,6 +18,8 @@ dataSources:
       file: ./src/mapping.ts
       entities:
         - Bucket
+        - Account
+        - Charity
       abis:
         - name: MOVRPlaceABI
           file: ./movrplace.json
